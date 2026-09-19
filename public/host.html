@@ -123,12 +123,8 @@ function render(state) {
     itemsTable.appendChild(tr);
   });
 
-  const index = state.currentIndex;
-  if (index === -1) {
-    currentCard.style.display = 'none';
-    resultsCard.style.display = 'none';
-    return;
-  }
+  const index = state.currentIndex === -1 ? 0 : state.currentIndex;
+  resultsCard.style.display = 'none';
 
   const item = state.items[index];
   currentCard.style.display = 'block';
