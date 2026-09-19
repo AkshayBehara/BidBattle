@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bid Battle — Host</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<div class="wrap">
+  <h1>🎙️ BID BATTLE — HOST</h1>
+
+  <div id="loginScreen" class="card">
+    <div class="subtitle">Enter host password</div>
+    <input type="password" id="passwordInput" placeholder="Password" autocomplete="off">
+    <button id="loginBtn">Login</button>
+    <div class="error" id="loginError"></div>
+  </div>
+
+  <div id="hostScreen" style="display:none;">
+    <div class="card" id="overviewCard">
+      <h2 style="margin-top:0;">Items</h2>
+      <table>
+        <thead><tr><th>#</th><th>Name</th><th>Status</th></tr></thead>
+        <tbody id="itemsTable"></tbody>
+      </table>
+    </div>
+
+    <div class="card" id="currentCard" style="display:none;">
+      <div class="host-item-title" id="hostItemName"></div>
+      <img id="hostItemImage" class="big-image" src="" alt="">
+      <div class="banner" id="hostBanner"></div>
+
+      <h3>Leaderboard</h3>
+      <div id="leaderboard"></div>
+
+      <div id="revealResult" class="reveal-box" style="display:none;"></div>
+
+      <div class="btn-row" style="margin-top:16px;">
+        <button id="startBtn">Start Round</button>
+        <button id="closeBtn" class="secondary">Close Bidding</button>
+        <button id="revealBtn" class="secondary">Reveal Price</button>
+        <button id="nextBtn" class="secondary">Next Item</button>
+      </div>
+      <div class="error" id="actionError"></div>
+    </div>
+
+    <div class="card" id="resultsCard" style="display:none;">
+      <h2>Final Results</h2>
+      <table id="resultsTable">
+        <thead><tr><th>Item</th><th>Winning Team</th><th>Winning Bid</th><th>Actual Price</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket = io();
+
+const loginScreen = document.getElementById('loginScreen');
+const hostScreen = document.getElementById('hostScreen');
+const passwordInput = document.getElementById('passwordInput');
+const loginBtn = document.getElementById('loginBtn');
+const loginError = document.getElementById('loginError');
+
+const itemsTable = document.getElementById('itemsTable');
+const currentCard = document.getElementById('currentCard');
+const hostItemName = document.getElementById('hostItemName');
+const hostItemImage = document.getElementById('hostItemImage');
+const hostBanner = document.getElementById('hostBanner');
+const leaderboard = document.getElementById('leaderboard');
+const revealResult = document.getElementById('revealResult');
+const actionError = document.getElementById('actionError');
+const resultsCard = document.getElementById('resultsCard');
+
+const startBtn = document.getElementById('startBtn');
+const closeBtn = document.getElementById('closeBtn');
+const revealBtn = document.getElementById('revealBtn');
+const nextBtn = document.getElementById('nextBtn');
+
+function login() {
+  const password = passwordInput.value;
+  socket.emit('hostLogin', { password }, (res) => {
+    if (res.ok) {
+      loginScreen.style.display = 'none';
+      hostScreen.style.display = 'block';
+      sessionStorage.setItem('bidbattle_host_pw', password);
+    } else {
+      loginError.textContent = res.error;
+    }
+  });
+}
+loginBtn.addEventListener('click', login);
+passwordInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') login(); });
+
+function callAction(event) {
+  actionError.textContent = '';
+  socket.emit(event, {}, (res) => {
+    if (!res.ok) actionError.textContent = res.error;
+  });
+}
+startBtn.addEventListener('click', () => callAction('hostStartRound'));
+closeBtn.addEventListener('click', () => callAction('hostCloseBidding'));
+revealBtn.addEventListener('click', () => callAction('hostRevealPrice'));
+nextBtn.addEventListener('click', () => callAction('hostNextItem'));
+
+function statusLabel(status) {
+  return {
+    not_started: 'Not started',
+    open: 'Bidding open',
+    closed: 'Sold',
+    revealed: 'Revealed',
+  }[status] || status;
+}
+
+function render(state) {
+  itemsTable.innerHTML = '';
+  state.items.forEach((it, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${i + 1}</td><td>${it.name}</td><td><span class="status-pill status-${it.status}">${statusLabel(it.status)}</span></td>`;
+    itemsTable.appendChild(tr);
+  });
+
+  const index = state.currentIndex;
+  if (index === -1) {
+    currentCard.style.display = 'none';
+    resultsCard.style.display = 'none';
+    return;
+  }
+
+  const item = state.items[index];
+  currentCard.style.display = 'block';
+  hostItemName.textContent = `Item ${index + 1} of ${state.totalItems}: ${item.name}`;
+  hostItemImage.src = item.image;
+
+  const bidsArr = Object.entries(item.bids || {})
+    .map(([teamName, b]) => ({ teamName, ...b }))
+    .sort((a, b) => b.amount - a.amount || a.time - b.time);
+
+  leaderboard.innerHTML = '';
+  if (bidsArr.length === 0) {
+    leaderboard.innerHTML = '<div class="leaderboard-row"><span>No bids yet</span></div>';
+  } else {
+    bidsArr.forEach((b, i) => {
+      const row = document.createElement('div');
+      row.className = 'leaderboard-row' + (i === 0 ? ' leader' : '');
+      row.innerHTML = `<span>${b.teamName}</span><span>${b.amount}</span>`;
+      leaderboard.appendChild(row);
+    });
+  }
+
+  revealResult.style.display = 'none';
+  if (item.status === 'not_started') {
+    hostBanner.className = 'banner waiting';
+    hostBanner.textContent = 'NOT STARTED';
+  } else if (item.status === 'open') {
+    hostBanner.className = 'banner open';
+    hostBanner.textContent = 'BIDDING OPEN';
+  } else if (item.status === 'closed') {
+    hostBanner.className = 'banner closed';
+    hostBanner.textContent = item.winner ? `CLOSED — ${item.winner.teamName} leads at ${item.winner.amount}` : 'CLOSED — no bids';
+  } else if (item.status === 'revealed') {
+    hostBanner.className = 'banner sold';
+    hostBanner.textContent = item.winner ? `SOLD to ${item.winner.teamName} for ${item.winner.amount}` : 'SOLD — no bids';
+    revealResult.style.display = 'block';
+    revealResult.textContent = `Actual price: ${item.actualPrice}`;
+  }
+
+  startBtn.disabled = item.status !== 'not_started';
+  closeBtn.disabled = item.status !== 'open';
+  revealBtn.disabled = item.status !== 'closed';
+  nextBtn.disabled = !(item.status === 'revealed' && index < state.totalItems - 1);
+
+  if (item.status === 'revealed' && index === state.totalItems - 1) {
+    socket.emit('hostGetResults', {}, (res) => {
+      if (res.ok) showResults(res.results);
+    });
+  } else {
+    resultsCard.style.display = 'none';
+  }
+}
+
+function showResults(results) {
+  resultsCard.style.display = 'block';
+  const tbody = document.querySelector('#resultsTable tbody');
+  tbody.innerHTML = '';
+  results.forEach((r) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${r.name}</td><td>${r.winningTeam || '-'}</td><td>${r.winningBid ?? '-'}</td><td>${r.actualPrice ?? '-'}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+socket.on('hostState', render);
+
+socket.on('connect', () => {
+  const savedPw = sessionStorage.getItem('bidbattle_host_pw');
+  if (savedPw) {
+    socket.emit('hostLogin', { password: savedPw }, (res) => {
+      if (res.ok) {
+        loginScreen.style.display = 'none';
+        hostScreen.style.display = 'block';
+      }
+    });
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+[
+  { "id": 1, "name": "Dhurandhar Movie Poster", "image": "/images/item1-dhurandhar-poster.png", "actualPrice": 345 },
+  { "id": 2, "name": "Deloitte HQ Building", "image": "/images/item2-deloitte-building.png", "actualPrice": 500 },
+  { "id": 3, "name": "HP Laptop", "image": "/images/item3-hp-laptop.png", "actualPrice": 100 }
+]

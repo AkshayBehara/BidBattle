@@ -1,0 +1,201 @@
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #0d0f14;
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.wrap {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+h1 {
+  text-align: center;
+  font-size: 2rem;
+  margin: 8px 0 4px;
+  letter-spacing: 1px;
+}
+
+.subtitle {
+  text-align: center;
+  color: #9aa4b2;
+  margin-bottom: 20px;
+}
+
+.card {
+  background: #171a22;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+}
+
+input[type="text"], input[type="password"], input[type="number"] {
+  width: 100%;
+  padding: 16px;
+  font-size: 1.3rem;
+  border-radius: 10px;
+  border: 2px solid #333;
+  background: #0d0f14;
+  color: #fff;
+  margin-bottom: 12px;
+}
+
+button {
+  width: 100%;
+  padding: 20px;
+  font-size: 1.4rem;
+  font-weight: 700;
+  border: none;
+  border-radius: 12px;
+  background: #ffb400;
+  color: #0d0f14;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+button:active { transform: scale(0.97); }
+button:disabled {
+  background: #444;
+  color: #888;
+  cursor: not-allowed;
+}
+
+button.secondary {
+  background: #2b2f3a;
+  color: #fff;
+}
+
+.error {
+  color: #ff6b6b;
+  font-weight: 600;
+  min-height: 1.4em;
+  text-align: center;
+}
+
+.item-image {
+  width: 100%;
+  max-height: 320px;
+  object-fit: contain;
+  border-radius: 12px;
+  background: #000;
+  margin-bottom: 12px;
+}
+
+.item-name {
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 4px 0 16px;
+}
+
+.bid-display {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.bid-amount {
+  font-size: 3.5rem;
+  font-weight: 900;
+  color: #ffb400;
+  line-height: 1;
+}
+
+.bid-leader {
+  font-size: 1.2rem;
+  color: #9aa4b2;
+  margin-top: 4px;
+}
+
+.banner {
+  text-align: center;
+  font-size: 1.6rem;
+  font-weight: 900;
+  padding: 14px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  letter-spacing: 2px;
+}
+.banner.open { background: #1e6b3a; color: #fff; }
+.banner.closed { background: #7a5a00; color: #fff; }
+.banner.sold { background: #7a1f1f; color: #fff; }
+.banner.waiting { background: #2b2f3a; color: #9aa4b2; }
+
+.leaderboard-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 8px;
+  border-bottom: 1px solid #2b2f3a;
+  font-size: 1.15rem;
+}
+.leaderboard-row:last-child { border-bottom: none; }
+.leaderboard-row.leader {
+  background: #1e6b3a33;
+  border-radius: 8px;
+  font-weight: 700;
+}
+
+.winner-banner {
+  text-align: center;
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #ffb400;
+  margin-bottom: 8px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+th, td {
+  padding: 12px 8px;
+  border-bottom: 1px solid #2b2f3a;
+  text-align: left;
+}
+th { color: #9aa4b2; font-size: 0.9rem; text-transform: uppercase; }
+
+.status-pill {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+.status-not_started { background: #2b2f3a; color: #9aa4b2; }
+.status-open { background: #1e6b3a; color: #fff; }
+.status-closed { background: #7a5a00; color: #fff; }
+.status-revealed { background: #1f3a7a; color: #fff; }
+
+.btn-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.host-item-title {
+  font-size: 1.3rem;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.big-image {
+  width: 100%;
+  max-height: 380px;
+  object-fit: contain;
+  background: #000;
+  border-radius: 12px;
+  margin-bottom: 12px;
+}
+
+.reveal-box {
+  text-align: center;
+  font-size: 1.6rem;
+  font-weight: 900;
+  padding: 14px;
+  background: #1f3a7a;
+  border-radius: 12px;
+  margin-bottom: 16px;
+}

@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Bid Battle</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<div class="wrap">
+  <h1>🔥 BID BATTLE</h1>
+
+  <div id="joinScreen" class="card">
+    <div class="subtitle">Enter your team name to join</div>
+    <input type="text" id="teamNameInput" placeholder="Team name" maxlength="30" autocomplete="off">
+    <button id="joinBtn">Join Auction</button>
+    <div class="error" id="joinError"></div>
+  </div>
+
+  <div id="gameScreen" style="display:none;">
+    <div class="banner waiting" id="banner">Waiting for host to start...</div>
+
+    <div class="card" id="itemCard" style="display:none;">
+      <img id="itemImage" class="item-image" src="" alt="">
+      <div class="item-name" id="itemName"></div>
+
+      <div class="bid-display">
+        <div class="bid-amount" id="bidAmount">--</div>
+        <div class="bid-leader" id="bidLeader">No bids yet</div>
+      </div>
+
+      <div id="revealBox" class="reveal-box" style="display:none;"></div>
+
+      <div id="bidForm">
+        <input type="number" id="bidInput" placeholder="Your bid" inputmode="numeric">
+        <button id="bidBtn">Place Bid</button>
+        <div class="error" id="bidError"></div>
+      </div>
+    </div>
+
+    <div class="card" id="resultsCard" style="display:none;">
+      <h2 style="text-align:center;">Final Results</h2>
+      <table id="resultsTable">
+        <thead><tr><th>Item</th><th>Winner</th><th>Bid</th><th>Actual</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket = io();
+let myTeam = null;
+let currentState = null;
+
+const joinScreen = document.getElementById('joinScreen');
+const gameScreen = document.getElementById('gameScreen');
+const teamNameInput = document.getElementById('teamNameInput');
+const joinBtn = document.getElementById('joinBtn');
+const joinError = document.getElementById('joinError');
+
+const banner = document.getElementById('banner');
+const itemCard = document.getElementById('itemCard');
+const itemImage = document.getElementById('itemImage');
+const itemName = document.getElementById('itemName');
+const bidAmount = document.getElementById('bidAmount');
+const bidLeader = document.getElementById('bidLeader');
+const bidForm = document.getElementById('bidForm');
+const bidInput = document.getElementById('bidInput');
+const bidBtn = document.getElementById('bidBtn');
+const bidError = document.getElementById('bidError');
+const revealBox = document.getElementById('revealBox');
+const resultsCard = document.getElementById('resultsCard');
+
+function join() {
+  const teamName = teamNameInput.value.trim();
+  if (!teamName) {
+    joinError.textContent = 'Please enter a team name.';
+    return;
+  }
+  joinBtn.disabled = true;
+  socket.emit('join', { teamName }, (res) => {
+    joinBtn.disabled = false;
+    if (res.ok) {
+      myTeam = res.teamName;
+      joinScreen.style.display = 'none';
+      gameScreen.style.display = 'block';
+      localStorage.setItem('bidbattle_team', myTeam);
+    } else {
+      joinError.textContent = res.error;
+    }
+  });
+}
+
+joinBtn.addEventListener('click', join);
+teamNameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') join(); });
+
+bidBtn.addEventListener('click', () => {
+  const amount = Number(bidInput.value);
+  bidError.textContent = '';
+  if (!amount || amount <= 0) {
+    bidError.textContent = 'Enter a valid bid amount.';
+    return;
+  }
+  bidBtn.disabled = true;
+  socket.emit('placeBid', { amount }, (res) => {
+    bidBtn.disabled = false;
+    if (!res.ok) {
+      bidError.textContent = res.error;
+    } else {
+      bidInput.value = '';
+    }
+  });
+});
+bidInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') bidBtn.click(); });
+
+function render(state) {
+  currentState = state;
+  if (state.currentIndex === -1) {
+    banner.className = 'banner waiting';
+    banner.textContent = 'Waiting for host to start...';
+    itemCard.style.display = 'none';
+    resultsCard.style.display = 'none';
+    return;
+  }
+
+  itemCard.style.display = 'block';
+  itemImage.src = state.item.image;
+  itemImage.alt = state.item.name;
+  itemName.textContent = state.item.name;
+
+  if (state.highestBid) {
+    bidAmount.textContent = state.highestBid.amount;
+    bidLeader.textContent = state.highestBid.teamName === myTeam
+      ? 'You are leading!'
+      : `Leading: ${state.highestBid.teamName}`;
+  } else {
+    bidAmount.textContent = '--';
+    bidLeader.textContent = 'No bids yet';
+  }
+
+  revealBox.style.display = 'none';
+
+  if (state.status === 'open') {
+    banner.className = 'banner open';
+    banner.textContent = 'BIDDING OPEN';
+    bidForm.style.display = 'block';
+    bidBtn.disabled = false;
+  } else if (state.status === 'closed' || state.status === 'revealed') {
+    banner.className = 'banner sold';
+    const winText = state.winner
+      ? (state.winner.teamName === myTeam ? 'YOU WON!' : `SOLD to ${state.winner.teamName}`)
+      : 'SOLD - no bids';
+    banner.textContent = winText;
+    bidForm.style.display = 'none';
+    if (state.status === 'revealed' && state.item.actualPrice !== undefined) {
+      revealBox.style.display = 'block';
+      revealBox.textContent = `Actual value: ${state.item.actualPrice}`;
+    }
+  } else {
+    banner.className = 'banner waiting';
+    banner.textContent = 'Get ready...';
+    bidForm.style.display = 'none';
+  }
+
+  if (state.currentIndex === state.totalItems - 1 && state.status === 'revealed') {
+    socket.emit('getResults', {}, (res) => {
+      if (res.ok) showResults(res.results);
+    });
+  }
+}
+
+function showResults(results) {
+  resultsCard.style.display = 'block';
+  const tbody = document.querySelector('#resultsTable tbody');
+  tbody.innerHTML = '';
+  results.forEach((r) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${r.name}</td><td>${r.winningTeam || '-'}</td><td>${r.winningBid ?? '-'}</td><td>${r.actualPrice ?? '-'}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+socket.on('state', render);
+
+socket.on('connect', () => {
+  const savedTeam = localStorage.getItem('bidbattle_team');
+  if (savedTeam) {
+    socket.emit('join', { teamName: savedTeam }, (res) => {
+      if (res.ok) {
+        myTeam = res.teamName;
+        joinScreen.style.display = 'none';
+        gameScreen.style.display = 'block';
+      }
+    });
+  }
+});
+</script>
+</body>
+</html>
